@@ -442,7 +442,7 @@
     }
   }
 
-  function openCartDrawer() {
+  async function openCartDrawer() {
     const saved = getSavedClient();
     if (!orderFullnameInput.value && saved.fullName) {
       orderFullnameInput.value = saved.fullName;
@@ -455,6 +455,9 @@
     cartBackdrop.classList.remove('hidden');
     cartDrawer.classList.add('open');
     cartDrawer.setAttribute('aria-hidden', 'false');
+
+    await MarkerStore.syncFromCloud();
+    updateCartTotalsAndMerge();
   }
 
   function closeCartDrawer() {
@@ -594,13 +597,17 @@
     showToast('Код замовлення скопійовано!');
   });
 
-  mergeIntoActiveBtn.addEventListener('click', () => {
+  mergeIntoActiveBtn.addEventListener('click', async () => {
     const targetId = mergeIntoActiveBtn.dataset.targetOrderId;
     const cart = getCart();
     if (!targetId || cart.length === 0) return;
 
+    mergeIntoActiveBtn.disabled = true;
+    await MarkerStore.syncFromCloud();
+
     const hasAdult = cart.some((i) => i.category === ALCOHOL_CATEGORY);
     const updated = MarkerStore.mergeItemsIntoOrder(targetId, cart, hasAdult);
+    mergeIntoActiveBtn.disabled = false;
     if (!updated) return;
 
     saveCart([]);
@@ -612,7 +619,7 @@
     switchView('cabinet');
   });
 
-  checkoutForm.addEventListener('submit', (e) => {
+  checkoutForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const cart = getCart();
     if (cart.length === 0) return;
@@ -625,6 +632,11 @@
 
     if (!fullName || !phone) return;
 
+    const submitBtn = checkoutForm.querySelector('button[type="submit"]');
+    if (submitBtn) submitBtn.disabled = true;
+
+    await MarkerStore.syncFromCloud();
+
     const hasAdultItems = cart.some((i) => i.category === ALCOHOL_CATEGORY);
     const order = MarkerStore.createOrder({
       fullName,
@@ -633,6 +645,8 @@
       items: cart,
       hasAdultItems
     });
+
+    if (submitBtn) submitBtn.disabled = false;
 
     saveClientProfile(fullName, phone);
     saveCart([]);
@@ -661,13 +675,14 @@
     successModal.classList.add('hidden');
   });
 
-  cabinetSearchForm.addEventListener('submit', (e) => {
+  cabinetSearchForm.addEventListener('submit', async (e) => {
     e.preventDefault();
     const phone = cabinetPhoneInput.value.trim();
     if (!phone) return;
     lastClientPhone = phone;
     const saved = getSavedClient();
     saveClientProfile(saved.fullName, phone);
+    await MarkerStore.syncFromCloud();
     renderCabinetOrders(phone);
   });
 
@@ -807,6 +822,16 @@
     }
   });
 
+  window.addEventListener('markerstore:updated', (e) => {
+    if (e.detail && e.detail.changed) {
+      renderCategories();
+      renderProducts();
+      if (lastClientPhone) {
+        renderCabinetOrders(lastClientPhone);
+      }
+    }
+  });
+
   window.addEventListener('storage', () => {
     renderCategories();
     renderProducts();
@@ -816,6 +841,7 @@
   });
 
   setInterval(() => {
+    MarkerStore.syncFromCloud();
     if (currentView === 'cabinet' && lastClientPhone) {
       const norm = MarkerStore.normalizePhone(lastClientPhone);
       const current = MarkerStore.getOrders().filter((o) => o.phoneNormalized === norm);
@@ -834,4 +860,5 @@
   updateCartBadge();
   renderCategories();
   renderProducts();
+  MarkerStore.syncFromCloud();
 })();

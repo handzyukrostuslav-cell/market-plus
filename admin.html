@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=8">
+  <link rel="stylesheet" href="style.css?v=9">
 </head>
 <body class="admin-body">
 
@@ -45,6 +45,7 @@
             Замовлення <span class="tab-badge" id="new-orders-badge">0</span>
           </button>
           <button type="button" class="tab-btn" data-admin-tab="products">Товари</button>
+          <button type="button" class="tab-btn" data-admin-tab="bags">🛍️ Пакети</button>
           <button type="button" class="tab-btn" data-admin-tab="categories">Категорії</button>
           <button type="button" class="tab-btn" data-admin-tab="customers">Клієнти та звіти</button>
           <button type="button" class="tab-btn" data-admin-tab="settings">Налаштування</button>
@@ -134,11 +135,17 @@
                     <option value="🧃">🧃 Напої / соки</option>
                     <option value="🍫">🍫 Солодощі / чай / кава</option>
                     <option value="🧴">🧴 Побутова хімія</option>
+                    <option value="🛍️">🛍️ Пакет</option>
                     <option value="🍺">🍺 Пиво / слабоалкогольні</option>
                     <option value="🍷">🍷 Вино / міцний алкоголь</option>
                     <option value="🚬">🚬 Тютюнові вироби</option>
                   </select>
                 </div>
+              </div>
+
+              <div class="form-field">
+                <label for="prod-capacity">Місткість (необов’язково — для пакетів, напр. до 10 кг)</label>
+                <input type="text" id="prod-capacity" placeholder="Наприклад: до 5 кг або 40×60 см">
               </div>
 
               <div class="form-field">
@@ -165,7 +172,54 @@
         </div>
       </section>
 
-      <!-- ВКЛАДКА 3: КЕРУВАННЯ КАТЕГОРІЯМИ ТА ЇХ ПОРЯДКОМ -->
+      <!-- ВКЛАДКА 3: КЕРУВАННЯ ПАКЕТАМИ -->
+      <section class="admin-section hidden" id="tab-bags">
+        <div class="admin-two-col">
+          <div class="admin-card">
+            <h3>🛍️ Додати новий пакет</h3>
+            <p class="muted-note">Усі додані тут пакети автоматично відображаються у категорії «Пакети», у швидкому блоці в кошику та у вікні вибору пакета перед оформленням замовлення.</p>
+            <form id="add-bag-form">
+              <div class="form-field">
+                <label for="bag-sku">Код пакета (з 1С / каси — бачить лише адмін)</label>
+                <input type="text" id="bag-sku" placeholder="Наприклад: 904">
+              </div>
+
+              <div class="form-field">
+                <label for="bag-name">Назва пакета *</label>
+                <input type="text" id="bag-name" placeholder="Наприклад: Пакет-майка великий" required>
+              </div>
+
+              <div class="form-row-2">
+                <div class="form-field">
+                  <label for="bag-capacity">Місткість / розмір *</label>
+                  <input type="text" id="bag-capacity" placeholder="Наприклад: до 10 кг" required>
+                </div>
+
+                <div class="form-field">
+                  <label for="bag-price">Ціна за 1 шт (грн) *</label>
+                  <input type="number" id="bag-price" min="0.1" step="0.1" placeholder="6" required>
+                </div>
+              </div>
+
+              <div class="form-field">
+                <label for="bag-image-file">Фото пакета (необов’язково)</label>
+                <input type="file" id="bag-image-file" accept="image/*">
+              </div>
+
+              <button type="submit" class="btn btn-yellow btn-block">+ Додати пакет у магазин</button>
+            </form>
+          </div>
+
+          <div class="admin-card">
+            <div class="section-toolbar">
+              <h3>Пакети в асортименті (<span id="admin-bags-count">0</span>)</h3>
+            </div>
+            <div class="admin-products-list" id="admin-bags-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ВКЛАДКА 4: КЕРУВАННЯ КАТЕГОРІЯМИ ТА ЇХ ПОРЯДКОМ -->
       <section class="admin-section hidden" id="tab-categories">
         <div class="admin-two-col">
           <div class="admin-card">
@@ -195,7 +249,7 @@
         </div>
       </section>
 
-      <!-- ВКЛАДКА 4: СТАТИСТИКА КЛІЄНТІВ ТА ЗВІТИ EXCEL -->
+      <!-- ВКЛАДКА 5: СТАТИСТИКА КЛІЄНТІВ ТА ЗВІТИ EXCEL -->
       <section class="admin-section hidden" id="tab-customers">
         <div class="admin-card" style="margin-bottom: 22px;">
           <div class="section-toolbar" style="margin-bottom:10px;">
@@ -246,7 +300,7 @@
         </div>
       </section>
 
-      <!-- ВКЛАДКА 5: НАЛАШТУВАННЯ (ХМАРА FIREBASE, РЕКВІЗИТИ, ЗНИЖКИ, ПАРОЛЬ) -->
+      <!-- ВКЛАДКА 6: НАЛАШТУВАННЯ (ХМАРА FIREBASE, РЕКВІЗИТИ, ЗНИЖКИ, ПАРОЛЬ) -->
       <section class="admin-section hidden" id="tab-settings">
         <div class="admin-two-col">
           <div class="admin-card">
@@ -353,7 +407,7 @@
 
   <div class="toast" id="toast"></div>
 
-  <script src="store.js?v=7"></script>
-  <script src="admin.js?v=7"></script>
+  <script src="store.js?v=9"></script>
+  <script src="admin.js?v=9"></script>
 </body>
 </html>

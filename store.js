@@ -275,7 +275,6 @@ const MarkerStore = (() => {
     try {
       localStorage.setItem(KEYS.ORDERS, JSON.stringify(orders));
 
-      // Відправляємо у хмару лише змінені або нові замовлення поштучно (без конфліктів між клієнтами)
       const nextMap = new Map();
       orders.forEach((o) => {
         if (!o || !o.id) return;
@@ -320,7 +319,6 @@ const MarkerStore = (() => {
     }
   }
 
-  // Завантаження актуальних даних із хмари Firebase
   async function syncFromCloud() {
     const baseUrl = getFirebaseBaseUrl();
     if (!baseUrl) {
@@ -415,7 +413,6 @@ const MarkerStore = (() => {
     }
   }
 
-  // Повне вивантаження локальних товарів, категорій, налаштувань та замовлень у хмару
   async function pushAllToCloud() {
     const baseUrl = getFirebaseBaseUrl();
     if (!baseUrl) return false;

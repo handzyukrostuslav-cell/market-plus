@@ -36,7 +36,7 @@
           <span class="brand-badge">M+</span>
           <div>
             <span class="brand-title">Marker Plus • Адмін</span>
-            <span class="brand-sub">с. Гвізд, вул. Синяка, буд. 19А</span>
+            <span class="brand-sub" id="cloud-status-badge">⚪ Локальний режим</span>
           </div>
         </div>
 
@@ -59,7 +59,7 @@
       <!-- ПОПЕРЕДЖЕННЯ ПРО ЛОКАЛЬНИЙ РЕЖИМ FILE:// -->
       <div id="file-protocol-warning" class="hidden" style="background:var(--red-bg); border:2px solid var(--red); color:var(--text-dark); padding:14px 18px; border-radius:14px; margin-bottom:20px; font-size:13px;">
         <strong>⚠️ Увага! Сайт відкрито напряму з папки (<code>file://</code>).</strong><br>
-        У цьому режимі браузер ізолює пам’ять <code>index.html</code> та <code>admin.html</code> один від одного, тому замовлення з клієнтської сторінки не потрапляють в адмінку. Відкривайте сайт через <strong>GitHub Pages / хостинг</strong> або локальний сервер (Live Server).
+        Для роботи хмарної синхронізації та замовлень з телефонів відкривайте сайт через <strong>GitHub Pages / хостинг</strong>.
       </div>
 
       <!-- ЗВЕДЕНА СТАТИСТИКА ЗВЕРХУ -->
@@ -89,7 +89,6 @@
       <!-- ВКЛАДКА 2: УПРАВЛІННЯ ТОВАРАМИ -->
       <section class="admin-section hidden" id="tab-products">
         <div class="admin-two-col">
-          <!-- Форма додавання товару -->
           <div class="admin-card">
             <h3>Додати новий товар</h3>
             <form id="add-product-form">
@@ -156,7 +155,6 @@
             </form>
           </div>
 
-          <!-- Список усіх товарів -->
           <div class="admin-card">
             <div class="section-toolbar">
               <h3>Товари в каталозі (<span id="admin-products-count">0</span>)</h3>
@@ -248,12 +246,30 @@
         </div>
       </section>
 
-      <!-- ВКЛАДКА 5: НАЛАШТУВАННЯ (РЕКВІЗИТИ, ЗНИЖКИ, ПАРОЛЬ) -->
+      <!-- ВКЛАДКА 5: НАЛАШТУВАННЯ (ХМАРА FIREBASE, РЕКВІЗИТИ, ЗНИЖКИ, ПАРОЛЬ) -->
       <section class="admin-section hidden" id="tab-settings">
         <div class="admin-two-col">
           <div class="admin-card">
+            <h3>☁️ Хмарна синхронізація (Firebase Realtime Database)</h3>
+            <p class="muted-note">Підключіть безкоштовну базу Firebase, щоб бачити замовлення клієнтів із їхніх телефонів у реальному часі.</p>
+
+            <div class="form-field">
+              <label for="setting-firebase-url">Посилання (URL) на базу Firebase</label>
+              <input type="url" id="setting-firebase-url" placeholder="https://marker-plus-default-rtdb.europe-west1.firebasedatabase.app">
+            </div>
+
+            <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
+              <button type="button" class="btn btn-green btn-sm" id="push-cloud-btn">📤 Вивантажити локальні дані у хмару</button>
+              <button type="button" class="btn btn-outline-brown btn-sm" id="pull-cloud-btn">📥 Завантажити з хмари</button>
+            </div>
+
+            <div id="cloud-settings-feedback" style="font-size:12px; padding:10px 12px; border-radius:10px; background:var(--bg-cream); border:1px solid var(--border); margin-bottom:18px;">
+              Статус: <strong>Локальний режим</strong>.
+            </div>
+
+            <hr style="border:none; border-top:1px solid var(--border); margin:18px 0;">
+
             <h3>💳 Реквізити для оплати на картку</h3>
-            <p class="muted-note">Ці дані автоматично відображаються покупцям при виборі способу оплати «За реквізитами».</p>
             <form id="settings-form">
               <div class="form-field">
                 <label for="setting-card-number">Номер банківської картки</label>
@@ -267,8 +283,6 @@
               <hr style="border:none; border-top:1px solid var(--border); margin:18px 0;">
 
               <h3>⭐ Програма постійного клієнта</h3>
-              <p class="muted-note">Автоматична знижка для клієнтів, які зробили вказану кількість успішних замовлень (вкажіть 0%, щоб вимкнути знижку).</p>
-
               <div class="form-row-2">
                 <div class="form-field">
                   <label for="setting-loyalty-threshold">Від скількох замовлень</label>
@@ -296,7 +310,7 @@
             <h3>ℹ️ Підказка щодо роботи з відсутніми товарами</h3>
             <p class="muted-note" style="font-size:13px; line-height:1.6;">
               1. Якщо покупець замовив товар, якого вже немає на полиці, відкрийте вкладку <strong>«Замовлення»</strong> та натисніть <strong>«Немає в наявності»</strong> біля цієї позиції.<br><br>
-              2. Оберіть: <strong>видалити товар</strong> із пакета або <strong>запропонувати інший товар на заміну</strong> з каталогу. Система автоматично перерахує нову суму.<br><br>
+              2. Оберіть <strong>видалення товару</strong> із пакета або <strong>запропонуйте інший товар на заміну</strong> з каталогу. Система автоматично перерахує нову суму.<br><br>
               3. Натисніть <strong>«Надіслати зміни на погодження клієнту»</strong>. Покупець побачить зміни у своєму кабінеті та зможе одним натисканням підтвердити або відхилити оновлений пакет.
             </p>
           </div>
@@ -339,7 +353,7 @@
 
   <div class="toast" id="toast"></div>
 
-  <script src="store.js?v=6"></script>
-  <script src="admin.js?v=6"></script>
+  <script src="store.js?v=7"></script>
+  <script src="admin.js?v=7"></script>
 </body>
 </html>

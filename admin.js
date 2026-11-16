@@ -7,6 +7,8 @@
   const loginForm = document.getElementById('admin-login-form');
   const loginError = document.getElementById('login-error-msg');
   const toastEl = document.getElementById('toast');
+  const cloudStatusBadge = document.getElementById('cloud-status-badge');
+  const cloudSettingsFeedback = document.getElementById('cloud-settings-feedback');
 
   const missingItemModal = document.getElementById('missing-item-modal');
   const missingModalItemTitle = document.getElementById('missing-modal-item-title');
@@ -19,6 +21,7 @@
   let customerSearch = '';
   let activeMissingTarget = null;
   let lastOrdersSnapshot = '';
+  let knownOrderIds = new Set(MarkerStore.getOrders().map((o) => o.id));
 
   if (window.location.protocol === 'file:') {
     const warnEl = document.getElementById('file-protocol-warning');
@@ -28,7 +31,59 @@
   function showToast(msg) {
     toastEl.textContent = msg;
     toastEl.classList.add('show');
-    setTimeout(() => toastEl.classList.remove('show'), 2800);
+    setTimeout(() => toastEl.classList.remove('show'), 3200);
+  }
+
+  function playNewOrderChime() {
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const notes = [587.33, 880];
+      notes.forEach((freq, idx) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        gain.gain.setValueAtTime(0.14, ctx.currentTime + idx * 0.16);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + idx * 0.16 + 0.35);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(ctx.currentTime + idx * 0.16);
+        osc.stop(ctx.currentTime + idx * 0.16 + 0.36);
+      });
+    } catch {
+      // Ігноруємо обмеження автовідтворення звуку браузером
+    }
+  }
+
+  function updateCloudStatusUI() {
+    const state = MarkerStore.getSyncState();
+    if (state.status === 'connected') {
+      const timeStr = state.lastSyncAt
+        ? state.lastSyncAt.toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+        : '';
+      cloudStatusBadge.textContent = `🟢 Хмара підключена ${timeStr ? '(' + timeStr + ')' : ''}`;
+      if (cloudSettingsFeedback) {
+        cloudSettingsFeedback.style.background = 'var(--green-bg)';
+        cloudSettingsFeedback.style.borderColor = 'var(--green)';
+        cloudSettingsFeedback.innerHTML = `<strong>🟢 Хмарна база Firebase активна!</strong> Остання синхронізація: <strong>${timeStr || 'щойно'}</strong>. Замовлення з телефонів покупців надходять автоматично.`;
+      }
+    } else if (state.status === 'error') {
+      cloudStatusBadge.textContent = '🔴 Помилка хмари';
+      if (cloudSettingsFeedback) {
+        cloudSettingsFeedback.style.background = 'var(--red-bg)';
+        cloudSettingsFeedback.style.borderColor = 'var(--red)';
+        cloudSettingsFeedback.innerHTML = `<strong>🔴 Помилка підключення до Firebase (${MarkerStore.escapeHtml(state.lastError)}).</strong> Перевірте правильність URL та переконайтеся, що у Firebase увімкнено правила запису/читання (<code>".read": true, ".write": true</code>).`;
+      }
+    } else {
+      cloudStatusBadge.textContent = '⚪ Локальний режим';
+      if (cloudSettingsFeedback) {
+        cloudSettingsFeedback.style.background = 'var(--bg-cream)';
+        cloudSettingsFeedback.style.borderColor = 'var(--border)';
+        cloudSettingsFeedback.innerHTML = `Статус: <strong>Локальний режим</strong>. Вкажіть URL бази Firebase вище, щоб увімкнути синхронізацію між пристроями.`;
+      }
+    }
   }
 
   function checkAuth() {
@@ -36,6 +91,7 @@
       loginScreen.classList.add('hidden');
       adminApp.classList.remove('hidden');
       refreshAdminAll();
+      MarkerStore.syncFromCloud();
     }
   }
 
@@ -57,9 +113,10 @@
     location.reload();
   });
 
-  document.getElementById('manual-refresh-orders-btn').addEventListener('click', () => {
+  document.getElementById('manual-refresh-orders-btn').addEventListener('click', async () => {
+    await MarkerStore.syncFromCloud();
     refreshAdminAll();
-    showToast('Список замовлень оновлено');
+    showToast('Дані синхронізовано');
   });
 
   const adminTabs = document.querySelectorAll('[data-admin-tab]');
@@ -131,7 +188,7 @@
     });
 
     if (filtered.length === 0) {
-      listEl.innerHTML = `<div class="empty-state">Замовлень у цій категорії поки немає.<br><small>Натисніть «🔄 Оновити», якщо замовлення щойно було створено на клієнтській сторінці.</small></div>`;
+      listEl.innerHTML = `<div class="empty-state">Замовлень у цій категорії поки немає.<br><small>Натисніть «🔄 Оновити», щоб перевірити нові надходження з хмари.</small></div>`;
       return;
     }
 
@@ -812,7 +869,6 @@
     });
 
     const topProducts = Array.from(productStatsMap.values()).sort((a, b) => b.sum - a.sum);
-
     const escCsv = (val) => `"${String(val ?? '').replace(/"/g, '""')}"`;
 
     const lines = [];
@@ -931,15 +987,52 @@
 
   function loadSettingsForm() {
     const settings = MarkerStore.getSettings();
+    document.getElementById('setting-firebase-url').value = settings.firebaseUrl || '';
     document.getElementById('setting-card-number').value = settings.cardNumber;
     document.getElementById('setting-card-holder').value = settings.cardHolder;
     document.getElementById('setting-loyalty-threshold').value = settings.loyaltyThreshold;
     document.getElementById('setting-loyalty-discount').value = settings.loyaltyDiscount;
     document.getElementById('setting-admin-pass').value = settings.adminPassword;
+    updateCloudStatusUI();
   }
 
-  document.getElementById('settings-form').addEventListener('submit', (e) => {
+  document.getElementById('push-cloud-btn').addEventListener('click', async () => {
+    const urlVal = document.getElementById('setting-firebase-url').value.trim();
+    if (!urlVal) {
+      alert('Спочатку вставте посилання на базу Firebase.');
+      return;
+    }
+    MarkerStore.saveSettings({ firebaseUrl: urlVal });
+    const ok = await MarkerStore.pushAllToCloud();
+    updateCloudStatusUI();
+    if (ok) {
+      showToast('Усі товари та замовлення успішно вивантажено у хмару!');
+    } else {
+      alert('Не вдалося записати дані у хмару. Перевірте посилання та правила доступу Firebase.');
+    }
+  });
+
+  document.getElementById('pull-cloud-btn').addEventListener('click', async () => {
+    const urlVal = document.getElementById('setting-firebase-url').value.trim();
+    if (!urlVal) {
+      alert('Спочатку вставте посилання на базу Firebase.');
+      return;
+    }
+    MarkerStore.saveSettings({ firebaseUrl: urlVal });
+    const ok = await MarkerStore.syncFromCloud();
+    updateCloudStatusUI();
+    if (ok) {
+      refreshAdminAll();
+      loadSettingsForm();
+      showToast('Дані успішно завантажено з хмари!');
+    } else {
+      alert('Помилка підключення до Firebase.');
+    }
+  });
+
+  document.getElementById('settings-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    const firebaseUrl = document.getElementById('setting-firebase-url').value.trim();
     const cardNumber = document.getElementById('setting-card-number').value.trim();
     const cardHolder = document.getElementById('setting-card-holder').value.trim();
     const loyaltyThreshold = parseInt(
@@ -952,12 +1045,17 @@
     const adminPassword = document.getElementById('setting-admin-pass').value.trim();
 
     MarkerStore.saveSettings({
+      firebaseUrl,
       cardNumber: cardNumber || 'Вкажіть номер картки в адмін-панелі',
       cardHolder,
       loyaltyThreshold: !isNaN(loyaltyThreshold) && loyaltyThreshold >= 1 ? loyaltyThreshold : 5,
       loyaltyDiscount: !isNaN(loyaltyDiscount) && loyaltyDiscount >= 0 ? loyaltyDiscount : 0,
       adminPassword: adminPassword || 'marketplus3845fff'
     });
+
+    if (firebaseUrl) {
+      await MarkerStore.syncFromCloud();
+    }
 
     showToast('Усі налаштування збережено!');
     refreshAdminAll();
@@ -969,7 +1067,29 @@
     renderAdminProducts();
     renderAdminCategories();
     renderCustomerStats();
+    updateCloudStatusUI();
   }
+
+  window.addEventListener('markerstore:updated', (e) => {
+    updateCloudStatusUI();
+    if (sessionStorage.getItem(SESSION_KEY) !== 'true') return;
+
+    const currentOrders = MarkerStore.getOrders();
+    const incomingNew = currentOrders.filter(
+      (o) => !knownOrderIds.has(o.id) && o.status === 'Розміщено'
+    );
+
+    if (incomingNew.length > 0) {
+      playNewOrderChime();
+      showToast(`🔔 Нове замовлення #${incomingNew[0].code} (${incomingNew[0].fullName})!`);
+    }
+
+    knownOrderIds = new Set(currentOrders.map((o) => o.id));
+
+    if (e.detail && e.detail.changed) {
+      refreshAdminAll();
+    }
+  });
 
   window.addEventListener('storage', () => {
     if (sessionStorage.getItem(SESSION_KEY) === 'true') {
@@ -979,6 +1099,7 @@
 
   setInterval(() => {
     if (sessionStorage.getItem(SESSION_KEY) !== 'true') return;
+    MarkerStore.syncFromCloud();
     const currentSnapshot = JSON.stringify(MarkerStore.getOrders());
     if (currentSnapshot !== lastOrdersSnapshot) {
       refreshAdminAll();

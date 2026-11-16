@@ -10,6 +10,7 @@
   let currentView = 'catalog';
   let lastClientPhone = '';
   let lastCabinetSnapshot = '';
+  let bagModalSelection = new Map();
 
   const viewCatalog = document.getElementById('view-catalog');
   const viewCabinet = document.getElementById('view-cabinet');
@@ -25,6 +26,8 @@
   const cartBackdrop = document.getElementById('cart-backdrop');
   const headerCartCount = document.getElementById('header-cart-count');
   const cartItemsContainer = document.getElementById('cart-items-container');
+  const cartBagsSection = document.getElementById('cart-bags-section');
+  const cartBagsList = document.getElementById('cart-bags-list');
   const cartCheckoutSection = document.getElementById('cart-checkout-section');
   const cartDiscountRow = document.getElementById('cart-discount-row');
   const cartLoyaltyLabel = document.getElementById('cart-loyalty-label');
@@ -43,6 +46,10 @@
   const displayCardHolder = document.getElementById('display-card-holder');
   const previewOrderCode = document.getElementById('preview-order-code');
   const previewCodeInline = document.getElementById('preview-code-inline');
+
+  const bagPromptModal = document.getElementById('bag-prompt-modal');
+  const bagModalOptionsList = document.getElementById('bag-modal-options-list');
+  const bagModalTotalSum = document.getElementById('bag-modal-total-sum');
 
   const ageGateModal = document.getElementById('age-gate-modal');
   const successModal = document.getElementById('success-modal');
@@ -334,6 +341,10 @@
           ? `<img src="${MarkerStore.escapeHtml(p.image)}" alt="${MarkerStore.escapeHtml(p.name)}" loading="lazy">`
           : `<span class="product-emoji">${MarkerStore.escapeHtml(p.icon || '🛒')}</span>`;
 
+        const metaUnit = p.capacity
+          ? `Місткість: <strong>${MarkerStore.escapeHtml(p.capacity)}</strong>`
+          : `Фасування: ${MarkerStore.escapeHtml(p.unit)}`;
+
         const actionHtml = isOut
           ? `<button type="button" class="btn btn-outline-brown btn-sm btn-block" disabled>Немає в наявності</button>`
           : inCartQty > 0
@@ -357,7 +368,7 @@
             <div class="product-info">
               <div>
                 <h3 class="product-title">${MarkerStore.escapeHtml(p.name)}</h3>
-                <span class="product-unit">Фасування: ${MarkerStore.escapeHtml(p.unit)}</span>
+                <span class="product-unit">${metaUnit}</span>
               </div>
               <div class="product-bottom">
                 <strong class="product-price">${MarkerStore.formatPrice(p.price)}</strong>
@@ -419,6 +430,8 @@
         sku: product.sku || '',
         name: product.name,
         category: product.category,
+        capacity: product.capacity || '',
+        isBag: MarkerStore.isBagProduct(product),
         price: product.price,
         unit: product.unit,
         qty: step
@@ -457,7 +470,7 @@
     cartDrawer.setAttribute('aria-hidden', 'false');
 
     await MarkerStore.syncFromCloud();
-    updateCartTotalsAndMerge();
+    renderCartDrawer();
   }
 
   function closeCartDrawer() {
@@ -470,6 +483,64 @@
   document.getElementById('close-cart-btn').addEventListener('click', closeCartDrawer);
   cartBackdrop.addEventListener('click', closeCartDrawer);
 
+  function renderCartBagsSection(cart) {
+    const availableBags = MarkerStore.getBagProducts().filter((p) => p.inStock !== false);
+    if (cart.length === 0 || availableBags.length === 0) {
+      cartBagsSection.classList.add('hidden');
+      return;
+    }
+
+    cartBagsSection.classList.remove('hidden');
+    const cartMap = new Map(cart.map((i) => [i.id, i.qty]));
+
+    cartBagsList.innerHTML = availableBags
+      .map((bag) => {
+        const qty = cartMap.get(bag.id) || 0;
+        const capTag = bag.capacity
+          ? `<span class="bag-cap-badge">${MarkerStore.escapeHtml(bag.capacity)}</span>`
+          : '';
+
+        const ctrlHtml =
+          qty > 0
+            ? `<div class="qty-control">
+                 <button type="button" class="qty-btn" data-cart-bag-minus="${bag.id}">−</button>
+                 <span class="qty-val">${qty}</span>
+                 <button type="button" class="qty-btn" data-cart-bag-plus="${bag.id}">+</button>
+               </div>`
+            : `<button type="button" class="btn btn-outline-brown btn-xs" data-cart-bag-add="${bag.id}">+ Додати</button>`;
+
+        return `
+          <div class="cart-bag-row ${qty > 0 ? 'has-qty' : ''}">
+            <div>
+              <div style="font-size:13px; font-weight:700;">${MarkerStore.escapeHtml(bag.name)} ${capTag}</div>
+              <div style="font-size:11.5px; color:var(--text-muted);">${MarkerStore.formatPrice(bag.price)} / шт</div>
+            </div>
+            <div>${ctrlHtml}</div>
+          </div>`;
+      })
+      .join('');
+  }
+
+  cartBagsList.addEventListener('click', (e) => {
+    const addBtn = e.target.closest('[data-cart-bag-add]');
+    if (addBtn) {
+      changeCartItemQty(addBtn.dataset.cartBagAdd, 1, false);
+      renderCartDrawer();
+      return;
+    }
+    const plusBtn = e.target.closest('[data-cart-bag-plus]');
+    if (plusBtn) {
+      changeCartItemQty(plusBtn.dataset.cartBagPlus, 1, false);
+      renderCartDrawer();
+      return;
+    }
+    const minusBtn = e.target.closest('[data-cart-bag-minus]');
+    if (minusBtn) {
+      changeCartItemQty(minusBtn.dataset.cartBagMinus, -1, false);
+      renderCartDrawer();
+    }
+  });
+
   function renderCartDrawer() {
     const cart = getCart();
 
@@ -479,6 +550,7 @@
           Ваш кошик порожній.<br>
           <small>Оберіть продукти в каталозі, щоб оформити замовлення.</small>
         </div>`;
+      cartBagsSection.classList.add('hidden');
       cartCheckoutSection.classList.add('hidden');
       return;
     }
@@ -486,26 +558,31 @@
     cartCheckoutSection.classList.remove('hidden');
 
     cartItemsContainer.innerHTML = cart
-      .map(
-        (item) => `
-        <div class="cart-item-row">
-          <div class="cart-item-info">
-            <div class="cart-item-title">${MarkerStore.escapeHtml(item.name)}</div>
-            <div class="cart-item-sub">${MarkerStore.formatPrice(item.price)} / ${MarkerStore.escapeHtml(item.unit)}</div>
-          </div>
-          <div class="cart-item-controls">
-            <div class="qty-control">
-              <button type="button" class="qty-btn" data-cart-minus="${item.id}">−</button>
-              <span class="qty-val">${MarkerStore.formatQty(item.qty)}</span>
-              <button type="button" class="qty-btn" data-cart-plus="${item.id}">+</button>
+      .map((item) => {
+        const subInfo = item.capacity
+          ? `${MarkerStore.formatPrice(item.price)} / шт (${MarkerStore.escapeHtml(item.capacity)})`
+          : `${MarkerStore.formatPrice(item.price)} / ${MarkerStore.escapeHtml(item.unit)}`;
+
+        return `
+          <div class="cart-item-row">
+            <div class="cart-item-info">
+              <div class="cart-item-title">${MarkerStore.escapeHtml(item.name)}</div>
+              <div class="cart-item-sub">${subInfo}</div>
             </div>
-            <strong class="cart-line-sum">${MarkerStore.formatPrice(item.price * item.qty)}</strong>
-            <button type="button" class="btn-mini" style="background:var(--red-bg); color:var(--red);" data-cart-remove="${item.id}">✕</button>
-          </div>
-        </div>`
-      )
+            <div class="cart-item-controls">
+              <div class="qty-control">
+                <button type="button" class="qty-btn" data-cart-minus="${item.id}">−</button>
+                <span class="qty-val">${MarkerStore.formatQty(item.qty)}</span>
+                <button type="button" class="qty-btn" data-cart-plus="${item.id}">+</button>
+              </div>
+              <strong class="cart-line-sum">${MarkerStore.formatPrice(item.price * item.qty)}</strong>
+              <button type="button" class="btn-mini" style="background:var(--red-bg); color:var(--red);" data-cart-remove="${item.id}">✕</button>
+            </div>
+          </div>`;
+      })
       .join('');
 
+    renderCartBagsSection(cart);
     updateCartTotalsAndMerge();
   }
 
@@ -619,8 +696,132 @@
     switchView('cabinet');
   });
 
-  checkoutForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
+  function openBagPromptModal(availableBags) {
+    const cart = getCart();
+    bagModalSelection = new Map();
+    availableBags.forEach((bag) => {
+      const inCart = cart.find((i) => i.id === bag.id);
+      bagModalSelection.set(bag.id, inCart ? Math.max(0, Math.round(Number(inCart.qty))) : 0);
+    });
+    renderBagModalOptions();
+    bagPromptModal.classList.remove('hidden');
+  }
+
+  function renderBagModalOptions() {
+    const availableBags = MarkerStore.getBagProducts().filter((p) => p.inStock !== false);
+    const cart = getCart();
+
+    bagModalOptionsList.innerHTML = availableBags
+      .map((bag) => {
+        const qty = bagModalSelection.get(bag.id) || 0;
+        const capHtml = bag.capacity
+          ? `<span class="bag-cap-badge">${MarkerStore.escapeHtml(bag.capacity)}</span>`
+          : '';
+
+        return `
+          <div class="bag-option-row ${qty > 0 ? 'selected' : ''}">
+            <div style="text-align:left;">
+              <strong style="font-size:13.5px; display:block;">${MarkerStore.escapeHtml(bag.icon || '🛍️')} ${MarkerStore.escapeHtml(bag.name)}</strong>
+              <div style="margin-top:3px; display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+                ${capHtml}
+                <span style="font-size:12.5px; font-weight:700; color:var(--brown-dark);">${MarkerStore.formatPrice(bag.price)} / шт</span>
+              </div>
+            </div>
+            <div class="qty-control">
+              <button type="button" class="qty-btn" data-bag-modal-minus="${bag.id}">−</button>
+              <span class="qty-val">${qty}</span>
+              <button type="button" class="qty-btn" data-bag-modal-plus="${bag.id}">+</button>
+            </div>
+          </div>`;
+      })
+      .join('');
+
+    const nonBagSubtotal = cart
+      .filter((i) => !MarkerStore.isBagProduct(i))
+      .reduce((acc, i) => acc + Number(i.price) * Number(i.qty), 0);
+
+    let bagsSubtotal = 0;
+    availableBags.forEach((bag) => {
+      const q = bagModalSelection.get(bag.id) || 0;
+      bagsSubtotal += Number(bag.price) * q;
+    });
+
+    const subtotal = nonBagSubtotal + bagsSubtotal;
+    const loyalty = MarkerStore.getClientLoyalty(orderPhoneInput.value.trim());
+    const discountAmount =
+      loyalty.isLoyal && loyalty.discountPercent > 0
+        ? Math.round(((subtotal * loyalty.discountPercent) / 100) * 100) / 100
+        : 0;
+    const total = Math.max(0, Math.round((subtotal - discountAmount) * 100) / 100);
+
+    bagModalTotalSum.textContent = MarkerStore.formatPrice(total);
+  }
+
+  bagModalOptionsList.addEventListener('click', (e) => {
+    const plus = e.target.closest('[data-bag-modal-plus]');
+    if (plus) {
+      const id = plus.dataset.bagModalPlus;
+      bagModalSelection.set(id, (bagModalSelection.get(id) || 0) + 1);
+      renderBagModalOptions();
+      return;
+    }
+    const minus = e.target.closest('[data-bag-modal-minus]');
+    if (minus) {
+      const id = minus.dataset.bagModalMinus;
+      const next = Math.max(0, (bagModalSelection.get(id) || 0) - 1);
+      bagModalSelection.set(id, next);
+      renderBagModalOptions();
+    }
+  });
+
+  document.getElementById('confirm-with-bags-btn').addEventListener('click', async () => {
+    let totalBagsQty = 0;
+    bagModalSelection.forEach((q) => {
+      totalBagsQty += q;
+    });
+
+    if (totalBagsQty <= 0) {
+      showToast('Оберіть кількість пакетів або натисніть «Я прийду зі своїм пакетом»');
+      return;
+    }
+
+    const availableBags = MarkerStore.getBagProducts().filter((p) => p.inStock !== false);
+    const nonBagItems = getCart().filter((i) => !MarkerStore.isBagProduct(i));
+
+    availableBags.forEach((bag) => {
+      const qty = bagModalSelection.get(bag.id) || 0;
+      if (qty > 0) {
+        nonBagItems.push({
+          id: bag.id,
+          sku: bag.sku || '',
+          name: bag.name,
+          category: bag.category,
+          capacity: bag.capacity || '',
+          isBag: true,
+          price: bag.price,
+          unit: bag.unit || 'шт',
+          qty
+        });
+      }
+    });
+
+    saveCart(nonBagItems);
+    bagPromptModal.classList.add('hidden');
+    await finalizeOrderCreation(false);
+  });
+
+  document.getElementById('confirm-own-bag-btn').addEventListener('click', async () => {
+    const nonBagItems = getCart().filter((i) => !MarkerStore.isBagProduct(i));
+    saveCart(nonBagItems);
+    bagPromptModal.classList.add('hidden');
+    await finalizeOrderCreation(true);
+  });
+
+  document.getElementById('close-bag-modal-btn').addEventListener('click', () => {
+    bagPromptModal.classList.add('hidden');
+  });
+
+  async function finalizeOrderCreation(ownBag) {
     const cart = getCart();
     if (cart.length === 0) return;
 
@@ -643,7 +844,8 @@
       phone,
       paymentMethod,
       items: cart,
-      hasAdultItems
+      hasAdultItems,
+      ownBag
     });
 
     if (submitBtn) submitBtn.disabled = false;
@@ -664,6 +866,24 @@
     cabinetPhoneInput.value = phone;
     lastClientPhone = phone;
     successModal.classList.remove('hidden');
+  }
+
+  checkoutForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const cart = getCart();
+    if (cart.length === 0) return;
+
+    const fullName = orderFullnameInput.value.trim();
+    const phone = orderPhoneInput.value.trim();
+    if (!fullName || !phone) return;
+
+    const availableBags = MarkerStore.getBagProducts().filter((p) => p.inStock !== false);
+    if (availableBags.length === 0) {
+      finalizeOrderCreation(false);
+      return;
+    }
+
+    openBagPromptModal(availableBags);
   });
 
   document.getElementById('go-to-cabinet-btn').addEventListener('click', () => {
@@ -732,7 +952,8 @@
             if (st === 'replaced' && i.replacement) {
               return `<div class="order-item-line is-replaced"><div><small><del>${MarkerStore.escapeHtml(i.name)}</del></small><br><strong>🔄 Заміна:</strong> ${MarkerStore.escapeHtml(i.replacement.name)} × ${MarkerStore.formatQty(i.replacement.qty)} (${MarkerStore.escapeHtml(i.replacement.unit)})</div><strong>${MarkerStore.formatPrice(i.replacement.price * i.replacement.qty)}</strong></div>`;
             }
-            return `<div class="order-item-line"><span>${MarkerStore.escapeHtml(i.name)} × <strong>${MarkerStore.formatQty(i.qty)}</strong> (${MarkerStore.escapeHtml(i.unit)})</span><strong>${MarkerStore.formatPrice(i.price * i.qty)}</strong></div>`;
+            const capNote = i.capacity ? ` [${MarkerStore.escapeHtml(i.capacity)}]` : '';
+            return `<div class="order-item-line"><span>${MarkerStore.escapeHtml(i.name)}${capNote} × <strong>${MarkerStore.formatQty(i.qty)}</strong> (${MarkerStore.escapeHtml(i.unit)})</span><strong>${MarkerStore.formatPrice(i.price * i.qty)}</strong></div>`;
           })
           .join('');
 
@@ -768,6 +989,7 @@
               <div>
                 <span class="order-code-tag">Код #${o.code}</span>
                 <span style="font-size:12px; color:var(--text-muted); margin-left:8px;">${o.createdAt}</span>
+                ${o.ownBag ? '<span class="own-bag-pill">🎒 Зі своїм пакетом</span>' : ''}
               </div>
               ${getStatusBadgeHtml(o.status)}
             </div>
@@ -826,6 +1048,9 @@
     if (e.detail && e.detail.changed) {
       renderCategories();
       renderProducts();
+      if (!cartDrawer.classList.contains('hidden') && cartDrawer.classList.contains('open')) {
+        renderCartDrawer();
+      }
       if (lastClientPhone) {
         renderCabinetOrders(lastClientPhone);
       }

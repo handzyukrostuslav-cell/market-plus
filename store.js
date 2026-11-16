@@ -16,6 +16,7 @@ const MarkerStore = (() => {
   };
 
   const ALCOHOL_CATEGORY = 'Алкоголь та тютюнові вироби';
+  const BAGS_CATEGORY = 'Пакети';
 
   const DEFAULT_SETTINGS = {
     firebaseUrl: 'https://marker-plus-default-rtdb.europe-west1.firebasedatabase.app',
@@ -36,6 +37,7 @@ const MarkerStore = (() => {
     { name: 'Солодощі та снеки', hidden: false },
     { name: 'Овочі та фрукти', hidden: false },
     { name: 'Побутова хімія', hidden: false },
+    { name: BAGS_CATEGORY, hidden: false },
     { name: ALCOHOL_CATEGORY, hidden: false }
   ];
 
@@ -51,7 +53,10 @@ const MarkerStore = (() => {
     { id: 'p9', sku: '109', name: 'Яйця курячі столові С1', category: 'Молочні продукти', price: 62, unit: '10 шт', icon: '🥚', image: '', inStock: true },
     { id: 'p10', sku: '110', name: 'Вода мінеральна негазована', category: 'Напої', price: 22, unit: '1.5 л', icon: '🧃', image: '', inStock: true },
     { id: 'p11', sku: '111', name: 'Чай чорний листовий', category: 'Солодощі та снеки', price: 58, unit: '100 г', icon: '🍫', image: '', inStock: true },
-    { id: 'p12', sku: '112', name: 'Засіб для миття посуду', category: 'Побутова хімія', price: 54, unit: '500 мл', icon: '🧴', image: '', inStock: true }
+    { id: 'p12', sku: '112', name: 'Засіб для миття посуду', category: 'Побутова хімія', price: 54, unit: '500 мл', icon: '🧴', image: '', inStock: true },
+    { id: 'bag_1', sku: '901', name: 'Пакет-майка малий', category: BAGS_CATEGORY, capacity: 'до 3 кг', price: 3, unit: 'шт', icon: '🛍️', image: '', inStock: true, isBag: true },
+    { id: 'bag_2', sku: '902', name: 'Пакет-майка великий', category: BAGS_CATEGORY, capacity: 'до 10 кг', price: 6, unit: 'шт', icon: '🛍️', image: '', inStock: true, isBag: true },
+    { id: 'bag_3', sku: '903', name: 'Пакет міцний з ручками', category: BAGS_CATEGORY, capacity: 'до 15 кг', price: 12, unit: 'шт', icon: '🛍️', image: '', inStock: true, isBag: true }
   ];
 
   let lastOrdersMap = new Map();
@@ -182,6 +187,11 @@ const MarkerStore = (() => {
     }
   }
 
+  function isBagProduct(product) {
+    if (!product) return false;
+    return Boolean(product.isBag) || product.category === BAGS_CATEGORY;
+  }
+
   function getProducts() {
     init();
     try {
@@ -190,6 +200,10 @@ const MarkerStore = (() => {
     } catch {
       return [];
     }
+  }
+
+  function getBagProducts() {
+    return getProducts().filter((p) => isBagProduct(p));
   }
 
   async function cloudPut(path, payload) {
@@ -243,6 +257,16 @@ const MarkerStore = (() => {
         changed = true;
       }
     });
+
+    if (!existingNames.has(BAGS_CATEGORY)) {
+      const alcIdx = cats.findIndex((c) => c.name === ALCOHOL_CATEGORY);
+      if (alcIdx !== -1) {
+        cats.splice(alcIdx, 0, { name: BAGS_CATEGORY, hidden: false });
+      } else {
+        cats.push({ name: BAGS_CATEGORY, hidden: false });
+      }
+      changed = true;
+    }
 
     if (!existingNames.has(ALCOHOL_CATEGORY)) {
       cats.push({ name: ALCOHOL_CATEGORY, hidden: false });
@@ -546,7 +570,7 @@ const MarkerStore = (() => {
     return code;
   }
 
-  function createOrder({ fullName, phone, paymentMethod, items, hasAdultItems }) {
+  function createOrder({ fullName, phone, paymentMethod, items, hasAdultItems, ownBag }) {
     const orders = getOrders();
     const code = generateNextOrderCode();
     const now = new Date();
@@ -567,6 +591,8 @@ const MarkerStore = (() => {
       replacement: null
     }));
 
+    const hasBagItems = preparedItems.some((i) => isBagProduct(i));
+
     const newOrder = recalculateOrderTotals({
       id: 'ord_' + Date.now() + '_' + code,
       code,
@@ -581,6 +607,7 @@ const MarkerStore = (() => {
       total: 0,
       originalTotal: 0,
       hasAdultItems: Boolean(hasAdultItems),
+      ownBag: !hasBagItems && Boolean(ownBag),
       status: 'Розміщено',
       clientArriving: '',
       clientArrivingAt: '',
@@ -622,6 +649,10 @@ const MarkerStore = (() => {
     });
 
     if (hasAdult) order.hasAdultItems = true;
+    if (order.items.some((i) => isBagProduct(i))) {
+      order.ownBag = false;
+    }
+
     const timeStr = new Date().toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' });
     order.addedNote = `Клієнт дозамовив позиції о ${timeStr}`;
 
@@ -709,7 +740,10 @@ const MarkerStore = (() => {
   return {
     KEYS,
     ALCOHOL_CATEGORY,
+    BAGS_CATEGORY,
+    isBagProduct,
     getProducts,
+    getBagProducts,
     saveProducts,
     getCategories,
     saveCategories,

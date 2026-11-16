@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Адмін-панель — Marker Plus</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=6">
+</head>
+<body class="admin-body">
+
+  <!-- ЕКРАН ВХОДУ В АДМІН-ПАНЕЛЬ -->
+  <div class="admin-login-screen" id="admin-login-screen">
+    <div class="login-card">
+      <span class="brand-badge lg">M+</span>
+      <h1>Marker Plus — Адмін-панель</h1>
+      <p>с. Гвізд, вул. Синяка, буд. 19А</p>
+      <form id="admin-login-form">
+        <div class="form-field">
+          <label for="admin-password-input">Пароль адміністратора</label>
+          <input type="password" id="admin-password-input" placeholder="Введіть пароль..." required>
+        </div>
+        <p class="error-text hidden" id="login-error-msg">Невірний пароль. Спробуйте ще раз.</p>
+        <button type="submit" class="btn btn-yellow btn-block">Увійти в панель керування</button>
+      </form>
+    </div>
+  </div>
+
+  <!-- РОБОЧИЙ КАБІНЕТ АДМІНІСТРАТОРА -->
+  <div class="admin-app hidden" id="admin-app">
+    <header class="site-header">
+      <div class="container header-wrap">
+        <div class="brand">
+          <span class="brand-badge">M+</span>
+          <div>
+            <span class="brand-title">Marker Plus • Адмін</span>
+            <span class="brand-sub">с. Гвізд, вул. Синяка, буд. 19А</span>
+          </div>
+        </div>
+
+        <nav class="main-tabs">
+          <button type="button" class="tab-btn active" data-admin-tab="orders">
+            Замовлення <span class="tab-badge" id="new-orders-badge">0</span>
+          </button>
+          <button type="button" class="tab-btn" data-admin-tab="products">Товари</button>
+          <button type="button" class="tab-btn" data-admin-tab="categories">Категорії</button>
+          <button type="button" class="tab-btn" data-admin-tab="customers">Клієнти та звіти</button>
+          <button type="button" class="tab-btn" data-admin-tab="settings">Налаштування</button>
+        </nav>
+
+        <button type="button" class="btn btn-outline-light btn-sm" id="admin-logout-btn">Вийти</button>
+      </div>
+    </header>
+
+    <main class="container main-area">
+
+      <!-- ПОПЕРЕДЖЕННЯ ПРО ЛОКАЛЬНИЙ РЕЖИМ FILE:// -->
+      <div id="file-protocol-warning" class="hidden" style="background:var(--red-bg); border:2px solid var(--red); color:var(--text-dark); padding:14px 18px; border-radius:14px; margin-bottom:20px; font-size:13px;">
+        <strong>⚠️ Увага! Сайт відкрито напряму з папки (<code>file://</code>).</strong><br>
+        У цьому режимі браузер ізолює пам’ять <code>index.html</code> та <code>admin.html</code> один від одного, тому замовлення з клієнтської сторінки не потрапляють в адмінку. Відкривайте сайт через <strong>GitHub Pages / хостинг</strong> або локальний сервер (Live Server).
+      </div>
+
+      <!-- ЗВЕДЕНА СТАТИСТИКА ЗВЕРХУ -->
+      <div class="admin-kpi-grid" id="admin-kpi-grid"></div>
+
+      <!-- ВКЛАДКА 1: ЗАМОВЛЕННЯ -->
+      <section class="admin-section" id="tab-orders">
+        <div class="section-toolbar">
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+            <h2>Замовлення покупців</h2>
+            <button type="button" class="btn btn-outline-brown btn-sm" id="manual-refresh-orders-btn">🔄 Оновити</button>
+          </div>
+          <div class="status-filters" id="admin-order-filters">
+            <button type="button" class="chip active" data-status="all">Усі</button>
+            <button type="button" class="chip" data-status="Розміщено">Розміщено</button>
+            <button type="button" class="chip" data-status="Очікує підтвердження клієнта">На погодженні</button>
+            <button type="button" class="chip" data-status="Комплектується">Комплектується</button>
+            <button type="button" class="chip" data-status="Готове до видачі">Готове до видачі</button>
+            <button type="button" class="chip" data-status="Виконано успішно">✅ Виконано успішно</button>
+            <button type="button" class="chip" data-status="Відхилено">Відхилено</button>
+          </div>
+        </div>
+
+        <div class="admin-orders-list" id="admin-orders-list"></div>
+      </section>
+
+      <!-- ВКЛАДКА 2: УПРАВЛІННЯ ТОВАРАМИ -->
+      <section class="admin-section hidden" id="tab-products">
+        <div class="admin-two-col">
+          <!-- Форма додавання товару -->
+          <div class="admin-card">
+            <h3>Додати новий товар</h3>
+            <form id="add-product-form">
+              <div class="form-field">
+                <label for="prod-sku">Код товару (з 1С / вашої бази — бачить лише адмін)</label>
+                <input type="text" id="prod-sku" placeholder="Наприклад: 1045 або 482000123">
+              </div>
+
+              <div class="form-field">
+                <label for="prod-name">Назва товару *</label>
+                <input type="text" id="prod-name" placeholder="Наприклад: Молоко Галичина 2.5% 900г" required>
+              </div>
+
+              <div class="form-row-2">
+                <div class="form-field">
+                  <label for="prod-category">Категорія *</label>
+                  <input type="text" id="prod-category" list="category-suggestions" placeholder="Оберіть або впишіть" required>
+                  <datalist id="category-suggestions"></datalist>
+                </div>
+
+                <div class="form-field">
+                  <label for="prod-unit">Одиниця / вага *</label>
+                  <input type="text" id="prod-unit" placeholder="шт / 1 кг / 1 л" value="шт" required>
+                </div>
+              </div>
+
+              <div class="form-row-2">
+                <div class="form-field">
+                  <label for="prod-price">Ціна (грн) *</label>
+                  <input type="number" id="prod-price" min="0.1" step="0.1" placeholder="45" required>
+                </div>
+
+                <div class="form-field">
+                  <label for="prod-icon">Іконка (якщо без фото)</label>
+                  <select id="prod-icon">
+                    <option value="🛒">🛒 Продукти</option>
+                    <option value="🍞">🍞 Хліб / випічка</option>
+                    <option value="🥛">🥛 Молочне</option>
+                    <option value="🌾">🌾 Крупи / бакалія</option>
+                    <option value="🧀">🧀 Сир / ковбаса</option>
+                    <option value="🥚">🥚 Яйця / фермерське</option>
+                    <option value="🍎">🍎 Овочі / фрукти</option>
+                    <option value="🧃">🧃 Напої / соки</option>
+                    <option value="🍫">🍫 Солодощі / чай / кава</option>
+                    <option value="🧴">🧴 Побутова хімія</option>
+                    <option value="🍺">🍺 Пиво / слабоалкогольні</option>
+                    <option value="🍷">🍷 Вино / міцний алкоголь</option>
+                    <option value="🚬">🚬 Тютюнові вироби</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-field">
+                <label for="prod-image-file">Фото товару з телефону / ПК (необов’язково)</label>
+                <input type="file" id="prod-image-file" accept="image/*">
+              </div>
+
+              <div class="form-field">
+                <label for="prod-image-url">Або посилання на фото (URL)</label>
+                <input type="url" id="prod-image-url" placeholder="https://...">
+              </div>
+
+              <button type="submit" class="btn btn-yellow btn-block">+ Додати товар у магазин</button>
+            </form>
+          </div>
+
+          <!-- Список усіх товарів -->
+          <div class="admin-card">
+            <div class="section-toolbar">
+              <h3>Товари в каталозі (<span id="admin-products-count">0</span>)</h3>
+              <input type="text" id="admin-product-search" class="compact-input" placeholder="Пошук за назвою або кодом...">
+            </div>
+            <div class="admin-products-list" id="admin-products-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ВКЛАДКА 3: КЕРУВАННЯ КАТЕГОРІЯМИ ТА ЇХ ПОРЯДКОМ -->
+      <section class="admin-section hidden" id="tab-categories">
+        <div class="admin-two-col">
+          <div class="admin-card">
+            <h3>Створити нову категорію</h3>
+            <p class="muted-note">Додайте новий розділ та впорядкуйте список категорій так, як вони відображатимуться на головній сторінці.</p>
+            <form id="add-category-form">
+              <div class="form-field">
+                <label for="new-category-name">Назва категорії *</label>
+                <input type="text" id="new-category-name" placeholder="Наприклад: Морозиво та заморозка" required>
+              </div>
+              <button type="submit" class="btn btn-yellow btn-block">+ Створити категорію</button>
+            </form>
+
+            <hr style="border:none; border-top:1px solid var(--border); margin:18px 0;">
+
+            <label class="checkbox-inline">
+              <input type="checkbox" id="toggle-hide-empty-cats">
+              <span>Автоматично приховувати порожні категорії на сайті клієнтів</span>
+            </label>
+          </div>
+
+          <div class="admin-card">
+            <h3>Порядок і видимість категорій</h3>
+            <p class="muted-note">Використовуйте стрілки ▲ ▼, щоб змінити черговість розділів без втручання в код.</p>
+            <div class="admin-categories-list" id="admin-categories-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ВКЛАДКА 4: СТАТИСТИКА КЛІЄНТІВ ТА ЗВІТИ EXCEL -->
+      <section class="admin-section hidden" id="tab-customers">
+        <div class="admin-card" style="margin-bottom: 22px;">
+          <div class="section-toolbar" style="margin-bottom:10px;">
+            <div>
+              <h3>📊 Вивантаження звіту в Excel (.csv)</h3>
+              <p class="muted-note" style="margin-bottom:0;">Отримайте готову таблицю успішних замовлень, загальної виручки та найпопулярніших товарів для звірки каси.</p>
+            </div>
+          </div>
+
+          <div class="export-controls-bar">
+            <button type="button" class="btn btn-yellow btn-sm" data-export-range="today">📥 Звіт за сьогодні</button>
+            <button type="button" class="btn btn-yellow btn-sm" data-export-range="month">📥 Звіт за цей місяць</button>
+            <button type="button" class="btn btn-outline-brown btn-sm" data-export-range="all">📥 За весь час</button>
+
+            <div class="custom-date-range">
+              <input type="date" id="export-date-from" title="Дата від">
+              <span>—</span>
+              <input type="date" id="export-date-to" title="Дата до">
+              <button type="button" class="btn btn-green btn-sm" id="export-custom-btn">Завантажити за період</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="section-toolbar">
+          <div>
+            <h2>Статистика клієнтів за номером телефону</h2>
+            <p class="muted-note">Аналітика замовлень, суми покупок, відсотка успішності та статусу постійного клієнта</p>
+          </div>
+          <input type="text" id="customer-stats-search" class="compact-input" placeholder="Пошук за телефоном або ім’ям...">
+        </div>
+
+        <div class="table-wrap">
+          <table class="stats-table">
+            <thead>
+              <tr>
+                <th>Клієнт</th>
+                <th>Номер телефону</th>
+                <th>Статус лояльності</th>
+                <th>Усього замовлень</th>
+                <th>Успішних / Відхилених</th>
+                <th>Успішність</th>
+                <th>Сума успішних</th>
+                <th>Середній чек</th>
+              </tr>
+            </thead>
+            <tbody id="customers-stats-tbody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ВКЛАДКА 5: НАЛАШТУВАННЯ (РЕКВІЗИТИ, ЗНИЖКИ, ПАРОЛЬ) -->
+      <section class="admin-section hidden" id="tab-settings">
+        <div class="admin-two-col">
+          <div class="admin-card">
+            <h3>💳 Реквізити для оплати на картку</h3>
+            <p class="muted-note">Ці дані автоматично відображаються покупцям при виборі способу оплати «За реквізитами».</p>
+            <form id="settings-form">
+              <div class="form-field">
+                <label for="setting-card-number">Номер банківської картки</label>
+                <input type="text" id="setting-card-number" placeholder="4149 0000 0000 0000">
+              </div>
+              <div class="form-field">
+                <label for="setting-card-holder">Отримувач платежу (необов’язково)</label>
+                <input type="text" id="setting-card-holder" placeholder="Наприклад: ФОП / Прізвище І. Б.">
+              </div>
+
+              <hr style="border:none; border-top:1px solid var(--border); margin:18px 0;">
+
+              <h3>⭐ Програма постійного клієнта</h3>
+              <p class="muted-note">Автоматична знижка для клієнтів, які зробили вказану кількість успішних замовлень (вкажіть 0%, щоб вимкнути знижку).</p>
+
+              <div class="form-row-2">
+                <div class="form-field">
+                  <label for="setting-loyalty-threshold">Від скількох замовлень</label>
+                  <input type="number" id="setting-loyalty-threshold" min="1" max="100" value="5">
+                </div>
+                <div class="form-field">
+                  <label for="setting-loyalty-discount">Розмір знижки (%)</label>
+                  <input type="number" id="setting-loyalty-discount" min="0" max="50" step="0.5" value="5">
+                </div>
+              </div>
+
+              <hr style="border:none; border-top:1px solid var(--border); margin:18px 0;">
+
+              <h3>🔐 Пароль входу в адмін-панель</h3>
+              <div class="form-field">
+                <label for="setting-admin-pass">Пароль адміністратора</label>
+                <input type="text" id="setting-admin-pass" placeholder="Введіть новий пароль...">
+              </div>
+
+              <button type="submit" class="btn btn-yellow btn-block">Зберегти всі налаштування</button>
+            </form>
+          </div>
+
+          <div class="admin-card">
+            <h3>ℹ️ Підказка щодо роботи з відсутніми товарами</h3>
+            <p class="muted-note" style="font-size:13px; line-height:1.6;">
+              1. Якщо покупець замовив товар, якого вже немає на полиці, відкрийте вкладку <strong>«Замовлення»</strong> та натисніть <strong>«Немає в наявності»</strong> біля цієї позиції.<br><br>
+              2. Оберіть: <strong>видалити товар</strong> із пакета або <strong>запропонувати інший товар на заміну</strong> з каталогу. Система автоматично перерахує нову суму.<br><br>
+              3. Натисніть <strong>«Надіслати зміни на погодження клієнту»</strong>. Покупець побачить зміни у своєму кабінеті та зможе одним натисканням підтвердити або відхилити оновлений пакет.
+            </p>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- МОДАЛЬНЕ ВІКНО ВИБОРУ ЗАМІНИ / ВИДАЛЕННЯ ВІДСУТНЬОГО ТОВАРУ В АДМІНЦІ -->
+  <div class="modal-backdrop hidden" id="missing-item-modal">
+    <div class="modal-card" style="max-width:520px; text-align:left;">
+      <h3 style="margin-bottom:6px;">Товар відсутній у наявності</h3>
+      <p class="muted-note" id="missing-modal-item-title"></p>
+
+      <label class="checkbox-inline" style="margin-bottom:14px;">
+        <input type="checkbox" id="missing-also-disable-catalog" checked>
+        <span>Також позначити цей товар як <strong>«Немає в наявності»</strong> в каталозі сайту</span>
+      </label>
+
+      <div class="missing-choice-tabs">
+        <button type="button" class="btn btn-outline-brown btn-sm" id="choice-remove-item-btn">
+          ✕ Просто прибрати із замовлення
+        </button>
+      </div>
+
+      <div style="margin-top:16px; padding-top:14px; border-top:1px solid var(--border);">
+        <label style="display:block; font-size:12px; font-weight:700; color:var(--brown-main); margin-bottom:6px;">
+          Або оберіть товар на заміну з каталогу (пошук за назвою чи кодом):
+        </label>
+        <input type="text" id="replacement-search-input" class="compact-input" style="width:100%; margin-bottom:10px;" placeholder="Введіть назву або код товару для заміни...">
+        <div id="replacement-candidates-list" class="replacement-list"></div>
+      </div>
+
+      <div style="margin-top:14px; text-align:right;">
+        <button type="button" class="btn btn-outline-brown btn-sm" id="close-missing-modal-btn">Скасувати</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="store.js?v=6"></script>
+  <script src="admin.js?v=6"></script>
+</body>
+</html>

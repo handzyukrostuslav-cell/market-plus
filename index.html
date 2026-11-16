@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Marker Plus — Продуктовий магазин | с. Гвізд, вул. Синяка, буд. 19А</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=6">
+</head>
+<body>
+
+  <!-- ШАПКА САЙТУ -->
+  <header class="site-header">
+    <div class="container header-wrap">
+      <a href="#catalog" class="brand" id="nav-brand">
+        <span class="brand-badge">M+</span>
+        <div>
+          <span class="brand-title">Marker Plus</span>
+          <span class="brand-sub">с. Гвізд, вул. Синяка, буд. 19А</span>
+        </div>
+      </a>
+
+      <nav class="main-tabs">
+        <button type="button" class="tab-btn active" data-view="catalog">Каталог товарів</button>
+        <button type="button" class="tab-btn" id="nav-favorites-btn">
+          ❤️ Обране <span class="tab-badge" id="favorites-count-badge">0</span>
+        </button>
+        <button type="button" class="tab-btn tab-btn-18" id="nav-alcohol-btn">
+          Алкоголь та тютюнові вироби <span class="badge-18">18+</span>
+        </button>
+        <button type="button" class="tab-btn" data-view="cabinet">
+          Мій кабінет <span class="tab-badge hidden" id="cabinet-alert-badge">!</span>
+        </button>
+      </nav>
+
+      <button type="button" class="cart-trigger" id="open-cart-btn">
+        <span class="cart-icon">🛒</span>
+        <span class="cart-label">Кошик</span>
+        <span class="cart-count" id="header-cart-count">0</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ПРОМО-БАНЕР -->
+  <section class="hero-banner">
+    <div class="container hero-content">
+      <div class="hero-text">
+        <span class="hero-pill">📍 с. Гвізд, вул. Синяка, буд. 19А • Видача без черги</span>
+        <h1>Замовляйте продукти онлайн — забирайте готовий пакет без черги</h1>
+        <p>Обирайте потрібні товари з телефону вдома, підтверджуйте замовлення, а ми зберемо все в пакет до вашого приходу.</p>
+      </div>
+      <div class="hero-steps">
+        <div class="hero-step-card">
+          <span class="step-num">1</span>
+          <span>Оберіть товари у кошик або «❤️ Обране»</span>
+        </div>
+        <div class="hero-step-card">
+          <span class="step-num">2</span>
+          <span>Отримайте код замовлення та бонуси</span>
+        </div>
+        <div class="hero-step-card">
+          <span class="step-num">3</span>
+          <span>Натисніть «Підходжу» і заберіть без черги</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- РОЗДІЛ 1: КАТАЛОГ ТОВАРІВ -->
+  <main class="container main-area" id="view-catalog">
+    <div class="catalog-controls">
+      <div class="search-box">
+        <span class="search-ico">🔍</span>
+        <input type="text" id="catalog-search" placeholder="Пошук товарів за назвою (наприклад: молоко, хліб, гречка)...">
+      </div>
+      <div class="categories-bar" id="categories-bar"></div>
+    </div>
+
+    <div class="catalog-meta-row">
+      <h2 id="catalog-heading">Усі товари магазину</h2>
+      <span class="items-counter" id="catalog-count">0 товарів</span>
+    </div>
+
+    <div class="products-grid" id="products-grid"></div>
+  </main>
+
+  <!-- РОЗДІЛ 2: КАБІНЕТ КЛІЄНТА -->
+  <section class="container main-area hidden" id="view-cabinet">
+    <div class="cabinet-header-card">
+      <div>
+        <span class="eyebrow-brown">Кабінет клієнта</span>
+        <h2>Відстеження замовлень та статус лояльності</h2>
+        <p>Введіть номер телефону, який ви вказували під час оформлення, щоб керувати активними пакетами та знижкою.</p>
+      </div>
+      <form class="cabinet-search-form" id="cabinet-search-form">
+        <input type="tel" id="cabinet-phone-input" placeholder="Ваш номер телефону (напр. 068 000 00 00)" required>
+        <button type="submit" class="btn btn-yellow">Знайти замовлення</button>
+      </form>
+    </div>
+
+    <div id="client-loyalty-banner" class="hidden"></div>
+    <div id="cabinet-orders-list" class="cabinet-orders-list"></div>
+  </section>
+
+  <!-- ПІДВАЛ -->
+  <footer class="site-footer">
+    <div class="container footer-wrap">
+      <div>
+        <strong>Marker Plus</strong> — продуктовий магазин
+      </div>
+      <div>
+        📍 Адреса самовивозу: <strong>с. Гвізд, вул. Синяка, буд. 19А</strong>
+      </div>
+    </div>
+  </footer>
+
+  <!-- МОДАЛЬНЕ ВІКНО ПІДТВЕРДЖЕННЯ 18+ -->
+  <div class="modal-backdrop hidden" id="age-gate-modal">
+    <div class="modal-card age-modal-card">
+      <div class="red-exclamation-circle" aria-hidden="true">!</div>
+      <span class="age-tag-18">Вікове обмеження 18+</span>
+      <h3>Підтвердіть, що вам виповнилося 18 років</h3>
+      <p class="age-modal-desc">
+        Вхід до вкладки <strong>«Алкоголь та тютюнові вироби»</strong> дозволено лише повнолітнім особам.
+        Видача таких товарів у магазині здійснюється виключно за наявності документа, що підтверджує вік.
+      </p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-yellow btn-block" id="age-confirm-yes">
+          Так, мені виповнилося 18 років
+        </button>
+        <button type="button" class="btn btn-outline-brown btn-block" id="age-confirm-no">
+          Ні, мені ще немає 18 років
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- БОКОВА ПАНЕЛЬ КОШИКА ТА ОФОРМЛЕННЯ -->
+  <div class="drawer-backdrop hidden" id="cart-backdrop"></div>
+  <aside class="cart-drawer" id="cart-drawer" aria-hidden="true">
+    <div class="drawer-head">
+      <h3>Ваш кошик</h3>
+      <button type="button" class="close-btn" id="close-cart-btn" aria-label="Закрити">✕</button>
+    </div>
+
+    <div class="drawer-body" id="cart-items-container"></div>
+
+    <div class="drawer-footer" id="cart-checkout-section">
+      <div class="cart-summary-lines">
+        <div class="summary-sub-row hidden" id="cart-discount-row">
+          <span id="cart-loyalty-label">⭐ Знижка постійного клієнта:</span>
+          <strong style="color:var(--green);" id="cart-discount-sum">-0 грн</strong>
+        </div>
+        <div class="cart-total-box">
+          <span>Разом до сплати:</span>
+          <strong id="cart-total-sum">0 грн</strong>
+        </div>
+      </div>
+
+      <div class="active-order-merge-box hidden" id="active-order-merge-box">
+        <p id="active-order-merge-text"></p>
+        <button type="button" class="btn btn-green btn-sm btn-block" id="merge-into-active-btn">
+          ➕ Додати в активний пакет без нового коду
+        </button>
+      </div>
+
+      <form id="checkout-form" class="checkout-form">
+        <div class="form-field">
+          <label for="order-fullname">Прізвище та ім’я *</label>
+          <input type="text" id="order-fullname" placeholder="Наприклад: Коваленко Іван" required>
+        </div>
+
+        <div class="form-field">
+          <label for="order-phone">Номер телефону *</label>
+          <input type="tel" id="order-phone" placeholder="Наприклад: 068 123 45 67" required>
+        </div>
+
+        <div class="form-field">
+          <label>Спосіб оплати *</label>
+          <div class="payment-options">
+            <label class="pay-option">
+              <input type="radio" name="paymentMethod" value="Оплата при отриманні" checked>
+              <span class="pay-option-card">
+                <strong>Оплата при отриманні</strong>
+                <small>Готівкою або карткою в магазині (с. Гвізд, вул. Синяка, буд. 19А)</small>
+              </span>
+            </label>
+
+            <label class="pay-option">
+              <input type="radio" name="paymentMethod" value="Оплата за реквізитами">
+              <span class="pay-option-card">
+                <strong>Оплата за реквізитами (на картку)</strong>
+                <small>Переказ на картку магазину із зазначенням коду замовлення</small>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <div class="requisites-box hidden" id="requisites-box">
+          <div class="req-row">
+            <span>Номер картки для оплати:</span>
+            <div class="copy-line">
+              <strong id="display-card-number">0000 0000 0000 0000</strong>
+              <button type="button" class="btn-mini" id="copy-card-btn">Копіювати</button>
+            </div>
+            <small id="display-card-holder" class="muted-note"></small>
+          </div>
+
+          <div class="req-row req-code-highlight">
+            <span>Код вашого замовлення:</span>
+            <div class="copy-line">
+              <strong class="order-code-pill" id="preview-order-code">0001</strong>
+              <button type="button" class="btn-mini" id="copy-code-btn">Копіювати код</button>
+            </div>
+            <p class="req-warning">
+              ⚠️ Обов’язково вкажіть код замовлення <strong id="preview-code-inline">0001</strong> у призначенні платежу!
+            </p>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-yellow btn-block">
+          Оформити нове замовлення
+        </button>
+      </form>
+    </div>
+  </aside>
+
+  <!-- МОДАЛЬНЕ ВІКНО ПІДТВЕРДЖЕНОГО ЗАМОВЛЕННЯ -->
+  <div class="modal-backdrop hidden" id="success-modal">
+    <div class="modal-card">
+      <div class="success-icon">✓</div>
+      <h3>Замовлення прийнято в обробку!</h3>
+      <p class="modal-sub">Ваш персональний код замовлення:</p>
+      <div class="big-order-code" id="modal-order-code">0001</div>
+      <div id="modal-payment-note" class="modal-payment-note"></div>
+      <p class="modal-address">Самовивіз: <strong>с. Гвізд, вул. Синяка, буд. 19А</strong></p>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-yellow btn-block" id="go-to-cabinet-btn">
+          Перейти в кабінет клієнта
+        </button>
+        <button type="button" class="btn btn-outline-brown btn-block" id="close-success-modal-btn">
+          Повернутися до каталогу
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="store.js?v=6"></script>
+  <script src="app.js?v=6"></script>
+</body>
+</html>

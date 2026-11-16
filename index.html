@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=8">
+  <link rel="stylesheet" href="style.css?v=9">
 </head>
 <body>
 
@@ -145,7 +145,18 @@
       <button type="button" class="close-btn" id="close-cart-btn" aria-label="Закрити">✕</button>
     </div>
 
-    <div class="drawer-body" id="cart-items-container"></div>
+    <div class="drawer-body">
+      <div id="cart-items-container"></div>
+
+      <!-- ОКРЕМА ВКЛАДКА ПАКЕТІВ БЕЗПОСЕРЕДНЬО В КОШИКУ -->
+      <div class="cart-bags-section hidden" id="cart-bags-section">
+        <div class="cart-bags-header">
+          <span>🛍️ Пакети до замовлення</span>
+          <small>Додайте потрібні пакети</small>
+        </div>
+        <div id="cart-bags-list" class="cart-bags-list"></div>
+      </div>
+    </div>
 
     <div class="drawer-footer" id="cart-checkout-section">
       <div class="cart-summary-lines">
@@ -227,6 +238,36 @@
     </div>
   </aside>
 
+  <!-- МОДАЛЬНЕ ВІКНО ВИБОРУ ПАКЕТА ПЕРЕД ОФОРМЛЕННЯМ ЗАМОВЛЕННЯ -->
+  <div class="modal-backdrop hidden" id="bag-prompt-modal">
+    <div class="modal-card bag-modal-card">
+      <div class="bag-modal-icon" aria-hidden="true">🛍️</div>
+      <h3>Чи бажаєте додати пакет до свого замовлення?</h3>
+      <p class="age-modal-desc">
+        Оберіть потрібну кількість пакетів (можна декілька різних) або вкажіть, що прийдете зі своїм пакетом.
+      </p>
+
+      <div id="bag-modal-options-list" class="bag-modal-options-list"></div>
+
+      <div class="bag-modal-summary">
+        <span>Разом до сплати:</span>
+        <strong id="bag-modal-total-sum">0 грн</strong>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn btn-yellow btn-block" id="confirm-with-bags-btn">
+          🛍️ Підтвердити з пакетами та оформити
+        </button>
+        <button type="button" class="btn btn-outline-brown btn-block" id="confirm-own-bag-btn">
+          🎒 Я прийду зі своїм пакетом
+        </button>
+        <button type="button" class="btn-mini" id="close-bag-modal-btn" style="margin-top:4px; align-self:center;">
+          ← Повернутися в кошик
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- МОДАЛЬНЕ ВІКНО ПІДТВЕРДЖЕНОГО ЗАМОВЛЕННЯ -->
   <div class="modal-backdrop hidden" id="success-modal">
     <div class="modal-card">
@@ -249,7 +290,7 @@
 
   <div class="toast" id="toast"></div>
 
-  <script src="store.js?v=7"></script>
-  <script src="app.js?v=7"></script>
+  <script src="store.js?v=9"></script>
+  <script src="app.js?v=9"></script>
 </body>
 </html>

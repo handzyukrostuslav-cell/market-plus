@@ -1,6 +1,7 @@
 (() => {
   const SESSION_KEY = 'markerplus_admin_auth_v2';
   const ALCOHOL_CATEGORY = MarkerStore.ALCOHOL_CATEGORY;
+  const BAGS_CATEGORY = MarkerStore.BAGS_CATEGORY;
 
   const loginScreen = document.getElementById('admin-login-screen');
   const adminApp = document.getElementById('admin-app');
@@ -206,7 +207,11 @@
 
         const itemsHtml = (o.items || [])
           .map((i, idx) => {
-            const actualSku = i.sku || productsMap.get(i.id)?.sku || '';
+            const prodInfo = productsMap.get(i.id);
+            const actualSku = i.sku || prodInfo?.sku || '';
+            const actualCap = i.capacity || prodInfo?.capacity || '';
+            const capNote = actualCap ? ` [${MarkerStore.escapeHtml(actualCap)}]` : '';
+
             const skuBadge = actualSku
               ? `<span style="background:var(--brown-dark); color:var(--yellow); padding:2px 6px; border-radius:5px; font-size:11px; font-weight:700; margin-right:6px;">Код: ${MarkerStore.escapeHtml(actualSku)}</span>`
               : '';
@@ -217,7 +222,7 @@
               return `
                 <div class="order-item-line is-missing">
                   <div>
-                    ${skuBadge}<del>${MarkerStore.escapeHtml(i.name)} × ${MarkerStore.formatQty(i.qty)}</del>
+                    ${skuBadge}<del>${MarkerStore.escapeHtml(i.name)}${capNote} × ${MarkerStore.formatQty(i.qty)}</del>
                     <strong style="color:var(--red); margin-left:6px;">— Немає в наявності</strong>
                   </div>
                   <button type="button" class="btn-mini" data-item-act="restore" data-ord-id="${o.id}" data-idx="${idx}">Повернути</button>
@@ -248,7 +253,7 @@
               <div class="order-item-line ${i.packed ? 'is-packed' : ''}">
                 <div>
                   <input type="checkbox" class="pack-checkbox" data-item-act="toggle-pack" data-ord-id="${o.id}" data-idx="${idx}" ${i.packed ? 'checked' : ''} title="Позначити як покладено в пакет">
-                  ${skuBadge}<span class="item-name-text">${MarkerStore.escapeHtml(i.name)} × <strong>${MarkerStore.formatQty(i.qty)}</strong> (${MarkerStore.escapeHtml(i.unit)})</span>
+                  ${skuBadge}<span class="item-name-text">${MarkerStore.escapeHtml(i.name)}${capNote} × <strong>${MarkerStore.formatQty(i.qty)}</strong> (${MarkerStore.escapeHtml(i.unit)})</span>
                 </div>
                 <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
                   <strong>${MarkerStore.formatPrice(i.price * i.qty)}</strong>
@@ -277,6 +282,7 @@
                 <a href="tel:${MarkerStore.escapeHtml(o.phone)}" style="color:var(--brown-main); font-weight:700; font-size:13px;">📞 ${MarkerStore.escapeHtml(o.phone)}</a>
                 <span style="font-size:12px; color:var(--text-muted);">${o.createdAt}</span>
                 <span style="font-size:12px; font-weight:700; color:var(--green);">✓ Зібрано: ${packedCount} з ${activeItems.length}</span>
+                ${o.ownBag ? '<span class="own-bag-pill">🎒 Зі своїм пакетом</span>' : ''}
                 ${hasAdult ? '<span class="status-pill status-rejected">🔞 18+ Документ</span>' : ''}
               </div>
               <span class="status-pill ${getStatusClass(o.status)}">${o.status === 'Виконано успішно' ? '✅ ' : ''}${o.status}</span>
@@ -565,6 +571,7 @@
     });
   }
 
+  // ================= КЕРУВАННЯ ТОВАРАМИ =================
   document.getElementById('add-product-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const sku = document.getElementById('prod-sku').value.trim();
@@ -573,6 +580,7 @@
     const unit = document.getElementById('prod-unit').value.trim();
     const price = parseFloat(document.getElementById('prod-price').value);
     const icon = document.getElementById('prod-icon').value;
+    const capacity = document.getElementById('prod-capacity').value.trim();
     const urlInput = document.getElementById('prod-image-url').value.trim();
     const fileInput = document.getElementById('prod-image-file');
 
@@ -583,15 +591,19 @@
       image = await compressImageFile(fileInput.files[0]);
     }
 
+    const isBag = category.toLowerCase() === BAGS_CATEGORY.toLowerCase();
+
     const products = MarkerStore.getProducts();
     products.unshift({
-      id: 'prod_' + Date.now(),
+      id: (isBag ? 'bag_' : 'prod_') + Date.now(),
       sku,
       name,
-      category,
+      category: isBag ? BAGS_CATEGORY : category,
+      capacity,
+      isBag,
       price,
       unit: unit || 'шт',
-      icon,
+      icon: isBag && !icon ? '🛍️' : icon,
       image,
       inStock: true
     });
@@ -633,13 +645,17 @@
           ? `<span style="background:var(--brown-dark); color:var(--yellow); padding:2px 7px; border-radius:6px; font-size:11px; font-weight:700; margin-right:6px;">Код: ${MarkerStore.escapeHtml(p.sku)}</span>`
           : `<span style="background:var(--white); border:1px solid var(--border); color:var(--text-muted); padding:2px 7px; border-radius:6px; font-size:11px; margin-right:6px;">Без коду</span>`;
 
+        const capBadge = p.capacity
+          ? ` • <span class="bag-cap-badge">${MarkerStore.escapeHtml(p.capacity)}</span>`
+          : '';
+
         return `
           <div class="admin-prod-row">
             <div class="admin-prod-main">
               <div class="admin-prod-thumb">${thumb}</div>
               <div>
                 <strong style="display:block; font-size:14px;">${skuBadge}${MarkerStore.escapeHtml(p.name)}</strong>
-                <span style="font-size:12px; color:var(--text-muted);">${MarkerStore.escapeHtml(p.category)} • ${MarkerStore.escapeHtml(p.unit)} • <strong>${MarkerStore.formatPrice(p.price)}</strong></span>
+                <span style="font-size:12px; color:var(--text-muted);">${MarkerStore.escapeHtml(p.category)} • ${MarkerStore.escapeHtml(p.unit)}${capBadge} • <strong>${MarkerStore.formatPrice(p.price)}</strong></span>
               </div>
             </div>
             <div class="admin-prod-controls">
@@ -705,6 +721,141 @@
     refreshAdminAll();
   });
 
+  // ================= КЕРУВАННЯ ПАКЕТАМИ (ОКРЕМА ВКЛАДКА) =================
+  document.getElementById('add-bag-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const sku = document.getElementById('bag-sku').value.trim();
+    const name = document.getElementById('bag-name').value.trim();
+    const capacity = document.getElementById('bag-capacity').value.trim();
+    const price = parseFloat(document.getElementById('bag-price').value);
+    const fileInput = document.getElementById('bag-image-file');
+
+    if (!name || !capacity || isNaN(price) || price <= 0) return;
+
+    let image = '';
+    if (fileInput.files && fileInput.files[0]) {
+      image = await compressImageFile(fileInput.files[0]);
+    }
+
+    const products = MarkerStore.getProducts();
+    products.unshift({
+      id: 'bag_' + Date.now(),
+      sku,
+      name,
+      category: BAGS_CATEGORY,
+      capacity,
+      isBag: true,
+      price,
+      unit: 'шт',
+      icon: '🛍️',
+      image,
+      inStock: true
+    });
+
+    MarkerStore.saveProducts(products);
+    MarkerStore.getCategories();
+    e.target.reset();
+    showToast(`Пакет «${name}» додано в магазин!`);
+    refreshAdminAll();
+  });
+
+  function renderAdminBags() {
+    const bags = MarkerStore.getBagProducts();
+    const countEl = document.getElementById('admin-bags-count');
+    const listEl = document.getElementById('admin-bags-list');
+    if (!countEl || !listEl) return;
+
+    countEl.textContent = bags.length;
+
+    if (bags.length === 0) {
+      listEl.innerHTML = `<div class="empty-state">Пакетів поки не додано. Додайте перший пакет у формі ліворуч.</div>`;
+      return;
+    }
+
+    listEl.innerHTML = bags
+      .map((b) => {
+        const thumb = b.image
+          ? `<img src="${MarkerStore.escapeHtml(b.image)}" alt="">`
+          : MarkerStore.escapeHtml(b.icon || '🛍️');
+
+        const skuBadge = b.sku
+          ? `<span style="background:var(--brown-dark); color:var(--yellow); padding:2px 7px; border-radius:6px; font-size:11px; font-weight:700; margin-right:6px;">Код: ${MarkerStore.escapeHtml(b.sku)}</span>`
+          : '';
+
+        const capBadge = b.capacity
+          ? `<span class="bag-cap-badge">${MarkerStore.escapeHtml(b.capacity)}</span>`
+          : '';
+
+        return `
+          <div class="admin-prod-row">
+            <div class="admin-prod-main">
+              <div class="admin-prod-thumb">${thumb}</div>
+              <div>
+                <strong style="display:block; font-size:14px;">${skuBadge}${MarkerStore.escapeHtml(b.name)}</strong>
+                <span style="font-size:12px; color:var(--text-muted);">Місткість: ${capBadge || 'не вказано'} • Ціна: <strong>${MarkerStore.formatPrice(b.price)}</strong> / шт</span>
+              </div>
+            </div>
+            <div class="admin-prod-controls">
+              <button type="button" class="btn-mini" data-bag-act="sku" data-id="${b.id}">Код</button>
+              <button type="button" class="btn-mini" data-bag-act="capacity" data-id="${b.id}">Місткість</button>
+              <button type="button" class="btn-mini" data-bag-act="price" data-id="${b.id}">Ціна</button>
+              <button type="button" class="btn-mini" style="background:${b.inStock ? 'var(--green-bg)' : 'var(--red-bg)'}; color:${b.inStock ? 'var(--green)' : 'var(--red)'};" data-bag-act="stock" data-id="${b.id}">
+                ${b.inStock ? 'В наявності' : 'Немає'}
+              </button>
+              <button type="button" class="btn-mini" style="background:var(--red-bg); color:var(--red);" data-bag-act="delete" data-id="${b.id}">✕</button>
+            </div>
+          </div>`;
+      })
+      .join('');
+  }
+
+  document.getElementById('admin-bags-list').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-bag-act]');
+    if (!btn) return;
+    const id = btn.dataset.id;
+    const act = btn.dataset.bagAct;
+    const products = MarkerStore.getProducts();
+    const idx = products.findIndex((p) => p.id === id);
+    if (idx === -1) return;
+
+    if (act === 'sku') {
+      const nextSku = prompt(`Код пакета для «${products[idx].name}»:`, products[idx].sku || '');
+      if (nextSku !== null) {
+        products[idx].sku = nextSku.trim();
+        MarkerStore.saveProducts(products);
+        showToast('Код пакета оновлено');
+      }
+    } else if (act === 'capacity') {
+      const nextCap = prompt(`Місткість пакета «${products[idx].name}»:`, products[idx].capacity || '');
+      if (nextCap !== null) {
+        products[idx].capacity = nextCap.trim();
+        MarkerStore.saveProducts(products);
+        showToast('Місткість оновлено');
+      }
+    } else if (act === 'price') {
+      const nextPrice = prompt(`Нова ціна (грн) для «${products[idx].name}»:`, products[idx].price);
+      const parsed = parseFloat(nextPrice);
+      if (!isNaN(parsed) && parsed > 0) {
+        products[idx].price = parsed;
+        MarkerStore.saveProducts(products);
+        showToast('Ціну пакета оновлено');
+      }
+    } else if (act === 'stock') {
+      products[idx].inStock = !products[idx].inStock;
+      MarkerStore.saveProducts(products);
+      showToast('Наявність пакета оновлено');
+    } else if (act === 'delete') {
+      if (confirm(`Видалити пакет «${products[idx].name}»?`)) {
+        products.splice(idx, 1);
+        MarkerStore.saveProducts(products);
+        showToast('Пакет видалено');
+      }
+    }
+
+    refreshAdminAll();
+  });
+
+  // ================= КЕРУВАННЯ КАТЕГОРІЯМИ =================
   function renderAdminCategories() {
     const categories = MarkerStore.getCategories();
     const products = MarkerStore.getProducts();
@@ -723,7 +874,7 @@
     listEl.innerHTML = categories
       .map((c, idx) => {
         const count = products.filter((p) => p.category === c.name).length;
-        const isProtected = c.name === ALCOHOL_CATEGORY;
+        const isProtected = c.name === ALCOHOL_CATEGORY || c.name === BAGS_CATEGORY;
         return `
           <div class="admin-prod-row">
             <div>
@@ -1065,6 +1216,7 @@
     renderKPI();
     renderAdminOrders();
     renderAdminProducts();
+    renderAdminBags();
     renderAdminCategories();
     renderCustomerStats();
     updateCloudStatusUI();
